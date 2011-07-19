@@ -14,7 +14,7 @@ class ZookeeperClientProject(info: ProjectInfo) extends StandardProject(info) wi
   // dependencies
   val slf4jApi = "org.slf4j" % "slf4j-api" % "1.5.8"
   val slf4jLog = "org.slf4j" % "slf4j-log4j12" % "1.5.8"
-  val log4j = "apache-log4j" % "log4j" % "1.2.15"
+  val log4j = "log4j" % "log4j" % "1.2.16"
   val configgy = "net.lag" % "configgy" % "2.0.1"
   val specs = "org.scala-tools.testing" % "specs_2.8.1" % "1.6.6" % "test"
 
