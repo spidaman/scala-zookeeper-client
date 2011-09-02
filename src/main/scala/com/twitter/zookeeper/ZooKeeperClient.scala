@@ -8,14 +8,13 @@ import org.apache.zookeeper.data.{ACL, Stat, Id}
 import org.apache.zookeeper.ZooDefs.Ids
 import org.apache.zookeeper.Watcher.Event.EventType
 import org.apache.zookeeper.Watcher.Event.KeeperState
-import net.lag.logging.Logger
-import net.lag.configgy.ConfigMap
+import org.slf4j.{Logger, LoggerFactory}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 
 class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
                       watcher: Option[ZooKeeperClient => Unit]) {
-  private val log = Logger.get
+  private val log = LoggerFactory.getLogger(this.getClass)
   @volatile private var zk : ZooKeeper = null
   connect()
 
@@ -29,14 +28,7 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
     this(servers, 3000, "", None)
 
   def this(servers: String, watcher: ZooKeeperClient => Unit) =
-    this(servers, 3000, "", Some(watcher))
-
-  def this(config: ConfigMap, watcher: Option[ZooKeeperClient => Unit]) = {
-    this(config.getString("zookeeper-client.hostlist").get, // Must be set. No sensible default.
-         config.getInt("zookeeper-client.session-timeout", 3000),
-         config.getString("zookeeper-client.base-path", ""),
-         watcher)
-  }
+    this(servers, 3000, "", watcher)
 
   def getHandle() : ZooKeeper = zk
 
@@ -55,12 +47,12 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
                          sessionEvent(assignLatch, connectionLatch, event)
                        }})
     assignLatch.countDown()
-    log.info("Attempting to connect to zookeeper servers %s", servers)
+    log.info("Attempting to connect to zookeeper servers {}", servers)
     connectionLatch.await()
   }
 
   def sessionEvent(assignLatch: CountDownLatch, connectionLatch : CountDownLatch, event : WatchedEvent) {
-    log.info("Zookeeper event: %s".format(event))
+    log.info("Zookeeper event: {}", event)
     assignLatch.await()
     event.getState match {
       case KeeperState.SyncConnected => {
@@ -68,7 +60,7 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
           watcher.map(fn => fn(this))
         } catch {
           case e:Exception =>
-            log.error(e, "Exception during zookeeper connection established callback")
+            log.error("Exception during zookeeper connection established callback", e)
         }
         connectionLatch.countDown()
       }
@@ -115,7 +107,7 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
   def createPath(path: String) {
     for (path <- subPaths(makeNodePath(path), '/')) {
       try {
-        log.debug("Creating path in createPath: %s", path)
+        log.debug("Creating path in createPath: {}", path)
         zk.create(path, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
       } catch {
         case _:KeeperException.NodeExistsException => {} // ignore existing nodes
@@ -152,14 +144,14 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
    * None and will track the node's re-creation with an existence watch.
    */
   def watchNode(node : String, onDataChanged : Option[Array[Byte]] => Unit) {
-    log.debug("Watching node %s", node)
+    log.debug("Watching node {}", node)
     val path = makeNodePath(node)
     def updateData {
       try {
         onDataChanged(Some(zk.getData(path, dataGetter, null)))
       } catch {
         case e:KeeperException => {
-          log.warning("Failed to read node %s: %s", path, e)
+          log.warn("Failed to read node {}: {}", path, e)
           deletedData
         }
       }
@@ -205,7 +197,7 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
     } catch {
       case e:KeeperException => {
         // Node was deleted -- fire a watch on node re-creation
-        log.warning("Failed to read node %s: %s", path, e)
+        log.warn("Failed to read node {}: {}", path, e)
         updateChildren(List())
         zk.exists(path, childWatcher)
       }
@@ -251,13 +243,13 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
       watchMap.synchronized {
         // remove deleted children from the watch map
         for (child <- removedChildren) {
-          log.ifDebug {"Node %s: child %s removed".format(node, child)}
+          log.debug("Node {}: child {} removed", node, child)
           watchMap -= child
         }
         // add new children to the watch map
         for (child <- addedChildren) {
           // node is added via nodeChanged callback
-          log.ifDebug {"Node %s: child %s added".format(node, child)}
+          log.debug("Node {}: child {} added", node, child)
           watchNode("%s/%s".format(node, child), nodeChanged(child))
         }
       }
