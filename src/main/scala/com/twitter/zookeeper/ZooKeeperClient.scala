@@ -12,23 +12,24 @@ import org.slf4j.{Logger, LoggerFactory}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 
-class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
-                      watcher: Option[ZooKeeperClient => Unit]) {
+class ZooKeeperClient(servers: String, sessionTimeout: Int, connectTimeout: Int,
+                      basePath : String, watcher: Option[ZooKeeperClient => Unit]) {
   private val log = LoggerFactory.getLogger(this.getClass)
   @volatile private var zk : ZooKeeper = null
   connect()
 
-  def this(servers: String, sessionTimeout: Int, basePath : String) =
-    this(servers, sessionTimeout, basePath, None)
+  def this(servers: String, sessionTimeout: Int, connectTimeout: Int, basePath : String) =
+    this(servers, sessionTimeout, connectTimeout, basePath, None)
 
-  def this(servers: String, sessionTimeout: Int, basePath : String, watcher: ZooKeeperClient => Unit) =
-    this(servers, sessionTimeout, basePath, Some(watcher))
+  def this(servers: String, sessionTimeout: Int, connectTimeout: Int, 
+           basePath : String, watcher: ZooKeeperClient => Unit) =
+    this(servers, sessionTimeout, connectTimeout, basePath, Some(watcher))
 
   def this(servers: String) =
-    this(servers, 3000, "", None)
+    this(servers, 3000, 3000, "", None)
 
   def this(servers: String, watcher: ZooKeeperClient => Unit) =
-    this(servers, 3000, "", watcher)
+    this(servers, 3000, 3000, "", watcher)
 
   def getHandle() : ZooKeeper = zk
 
@@ -48,7 +49,15 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, basePath : String,
                        }})
     assignLatch.countDown()
     log.info("Attempting to connect to zookeeper servers {}", servers)
-    connectionLatch.await()
+    connectionLatch.await(sessionTimeout, TimeUnit.MILLISECONDS)
+    try {
+      isAlive
+    } catch {
+      case e => {
+        throw new RuntimeException("Could not connect to zookeeper ensemble: " + servers 
+          + ". Connection timed out after " + connectTimeout + " milliseconds!", e)
+      }
+    }
   }
 
   def sessionEvent(assignLatch: CountDownLatch, connectionLatch : CountDownLatch, event : WatchedEvent) {
