@@ -94,6 +94,10 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, connectTimeout: Int,
 
   private def makeNodePath(path : String) = "%s/%s".format(basePath, path).replaceAll("//", "/")
 
+  def exists(path: String): Stat = {
+    zk.exists(makeNodePath(path), false)
+  }
+
   def getChildren(path: String): Seq[String] = {
     zk.getChildren(makeNodePath(path), false)
   }
