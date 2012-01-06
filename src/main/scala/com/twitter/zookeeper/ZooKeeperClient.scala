@@ -156,12 +156,13 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, connectTimeout: Int,
    * new data value as a byte array. If the node is deleted, onDataChanged will be called with
    * None and will track the node's re-creation with an existence watch.
    */
-  def watchNode(node : String, onDataChanged : Option[Array[Byte]] => Unit) {
+  def watchNode(node : String, onDataChanged : (Option[Array[Byte]], Stat) => Unit) {
     log.debug("Watching node {}", node)
     val path = makeNodePath(node)
     def updateData {
+      val stat = new Stat()
       try {
-        onDataChanged(Some(zk.getData(path, dataGetter, null)))
+        onDataChanged(Some(zk.getData(path, dataGetter, stat)), stat)
       } catch {
         case e:KeeperException => {
           log.warn("Failed to read node {}: {}", path, e)
@@ -171,7 +172,7 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, connectTimeout: Int,
     }
 
     def deletedData {
-      onDataChanged(None)
+      onDataChanged(None, new Stat())
       if (zk.exists(path, dataGetter) != null) {
         // Node was re-created by the time we called zk.exist
         updateData
@@ -236,7 +237,7 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, connectTimeout: Int,
 
   private def watchChildrenWithData[T](node : String, watchMap: mutable.Map[String, T],
                                        deserialize: Array[Byte] => T, notifier: Option[String => Unit]) {
-    def nodeChanged(child : String)(childData : Option[Array[Byte]]) {
+    def nodeChanged(child : String)(childData : Option[Array[Byte]], stat : Stat) {
       childData match {
         case Some(data) => {
           watchMap.synchronized {

@@ -5,7 +5,7 @@ import java.net.{Socket, ConnectException}
 import org.apache.zookeeper.{CreateMode, Watcher, WatchedEvent, ZooKeeper}
 import org.apache.zookeeper.CreateMode._
 import org.apache.zookeeper.KeeperException.NoNodeException
-import org.apache.zookeeper.data.{ACL, Id}
+import org.apache.zookeeper.data.{ACL, Id, Stat}
 import org.specs._
 import scala.collection.mutable
 
@@ -68,7 +68,7 @@ class ZookeeperClientSpec extends Specification {
       val node = "/datanode"
       val createMode = EPHEMERAL
       var watchCount = 0
-      def watcher(data : Option[Array[Byte]]) {
+      def watcher(data : Option[Array[Byte]], stat : Stat) {
         watchCount += 1
       }
       zkClient.create(node, data, createMode)
