@@ -128,12 +128,12 @@ class ZooKeeperClient(servers: String, sessionTimeout: Int, connectTimeout: Int,
     }
   }
 
-  def get(path: String): Array[Byte] = {
-    zk.getData(makeNodePath(path), false, null)
+  def get(path: String, stat: Stat = null): Array[Byte] = {
+    zk.getData(makeNodePath(path), false, stat)
   }
 
-  def set(path: String, data: Array[Byte]) {
-    zk.setData(makeNodePath(path), data, -1)
+  def set(path: String, data: Array[Byte], version: Int = -1): Stat = {
+    zk.setData(makeNodePath(path), data, version)
   }
 
   def delete(path: String) {
