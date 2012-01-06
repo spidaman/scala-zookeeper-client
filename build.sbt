@@ -20,7 +20,7 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies += 
-  "org.apache.zookeeper" % "zookeeper" % "3.3.3" excludeAll(
+  "org.apache.zookeeper" % "zookeeper" % "3.3.4" excludeAll(
     ExclusionRule(name = "jms"),
     ExclusionRule(name = "jmxtools"),
     ExclusionRule(name = "jmxri")
