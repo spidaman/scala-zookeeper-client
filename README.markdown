@@ -37,13 +37,13 @@ Monitor a node forever:
 
     import com.twitter.zookeeper.ZooKeeperClient
     import org.apache.zookeeper.CreateMode
+    import org.apache.zookeeper.data.Stat
 
     val zk = new ZooKeeperClient("localhost:2181")
     zk.create("/test-node", "foo".getBytes, CreateMode.PERSISTENT)
-    zk.watchNode("/test-node", { (data : Option[Array[Byte]]) =>
-      data match {
+    zk.watchNode("/test-node", { (data : Option[Array[Byte]], stat: Stat) => data match {
         case Some(d) => println("Data updated: %s".format(new String(d)))
-	case None => println("Node deleted")
+	    case None => println("Node deleted")
       }
     })
     zk.set("/test-node", "bar".getBytes)
